@@ -1,0 +1,202 @@
+version: 2
+
+models:
+  - name: stg_ga4_events
+    description: >
+      One row per GA4 event occurring on the Google Merchandise Store website.
+      Cleaned and cast into correct data formats from the raw daily event tables. Excludes rows where
+      session ID could not be extracted, as these cannot be attributed to a
+      user session and are unusable for analysis.
+
+    columns:
+      - name: event_date
+        description: The date when the event occurred. Cast from raw string format YYYYMMDD to a date type.
+        tests:
+          - not_null
+
+      - name: event_timestamp
+        description: Exact timestamp of the event. Converted from raw microseconds to a timestamp type.
+        tests:
+          - not_null
+
+      - name: event_name
+        description: The type of event occurring, e.g. page_view, purchase, add_to_cart.
+        tests:
+          - not_null
+
+      - name: user_pseudo_id
+        description: Anonymous identifier for the user. Used across sessions for the same user on the same device.
+        tests:
+          - not_null
+
+      - name: session_id
+        description: Numeric identifier for a single visit to the website. Combined with user_pseudo_id to uniquely identify a session.
+        tests:
+          - not_null
+
+      - name: session_number
+        description: >
+          Which session this is for the user. 1 means this is the user's first
+          ever session, 2 means their second, and so on.
+
+      - name: source
+        description: >
+          Where the user came from, e.g. google, facebook, newsletter.
+          Null values from the raw data are replaced with '(not set)' to
+          prevent sessions from being silently lost in channel analysis.
+        tests:
+          - not_null
+
+      - name: medium
+        description: >
+          The type of channel the user came from, e.g. cpc, organic, email.
+          Null values from the raw data are replaced with '(not set)'.
+        tests:
+          - not_null
+
+      - name: campaign
+        description: >
+          The specific campaign name if one was tagged on the traffic source.
+          Null values from the raw data are replaced with '(not set)'.
+        tests:
+          - not_null
+
+      - name: transaction_id
+        description: >
+          Unique identifier for a purchase transaction. Only populated on
+          rows where event_name = 'purchase'. Null for all other event types.
+
+      - name: revenue
+        description: >
+          Purchase revenue in USD. Only populated on rows where
+          event_name = 'purchase'. Null for all other event types.
+
+  - name: stg_ga4_sessions
+    description: >
+      One row per session. Collapsed from stg_ga4_events by grouping all events
+      belonging to the same user and session together. A session is uniquely
+      identified by the combination of user_pseudo_id and session_id, concatenated
+      into session_key.
+
+    columns:
+      - name: session_key
+        description: >
+          Unique identifier for a session. Concatenation of user_pseudo_id and
+          session_id. Used as the primary key for this model.
+        tests:
+          - not_null
+          - unique
+
+      - name: user_pseudo_id
+        description: Anonymous identifier for the user who initiated the session.
+        tests:
+          - not_null
+
+      - name: session_id
+        description: Numeric session identifier, unique for each user.
+        tests:
+          - not_null
+
+      - name: session_date
+        description: Date the session started.
+        tests:
+          - not_null
+
+      - name: session_start_timestamp
+        description: Exact timestamp of the first event in the session.
+        tests:
+          - not_null
+
+      - name: session_end_timestamp
+        description: Exact timestamp of the last event in the session.
+        tests:
+          - not_null
+
+      - name: session_number
+        description: >
+          Which session this is for the user. 1 means this was their first ever
+          session, 2 their second, and so on.
+
+      - name: source
+        description: Traffic source that drove this session, e.g. google, facebook.
+        tests:
+          - not_null
+
+      - name: medium
+        description: Channel type that drove this session, e.g. cpc, organic, email.
+        tests:
+          - not_null
+
+      - name: campaign
+        description: Campaign name that drove this session.
+        tests:
+          - not_null
+
+      - name: did_convert
+        description: >
+          1 if the session resulted in a purchase, 0 if not. Derived by checking
+          whether any event in the session had event_name = 'purchase'.
+        tests:
+          - not_null
+
+      - name: revenue
+        description: >
+          Total purchase revenue generated in this session in USD. Null if the
+          session did not result in a purchase.
+
+      - name: unique_event_count
+        description: >
+          Count of distinct event types that occurred during the session. Used as a proxy
+          for session engagement depth. Higher values indicate the user took more
+          varied actions during their visit.
+        tests:
+          - not_null
+
+  - name: stg_ga4_purchases
+    description: >
+      One row per completed purchase transaction. Filtered from stg_ga4_events
+      to only include rows where event_name = 'purchase' and a valid transaction_id
+      is present. Excludes transactions where GA4 recorded the transaction_id as
+      '(not set)' due to a known GA4 data quality issue where purchase events can
+      occur without a valid transaction ID. Duplicates are resolved by keeping the
+      earliest event per transaction_id using a window function, handling cases
+      where GA4 creates the same purchase event multiple times due to page refreshes
+      or network retries. Does not include item-level detail from the raw items
+      column as product-level analysis is out of scope for this project.
+
+    columns:
+      - name: session_key
+        description: Foreign key to stg_ga4_sessions.
+        tests:
+          - not_null
+
+      - name: user_pseudo_id
+        description: Anonymous identifier for the user who made the purchase.
+        tests:
+          - not_null
+
+      - name: session_id
+        description: Numeric session identifier for the session in which the purchase occurred.
+        tests:
+          - not_null
+
+      - name: purchase_date
+        description: Date the purchase occurred.
+        tests:
+          - not_null
+
+      - name: purchase_timestamp
+        description: Exact timestamp of the purchase event.
+        tests:
+          - not_null
+
+      - name: transaction_id
+        description: Unique identifier for the transaction.
+        tests:
+          - not_null
+          - unique
+
+      - name: revenue
+        description: Total purchase revenue in USD for this transaction.
+        tests:
+          - not_null

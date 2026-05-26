@@ -1,0 +1,148 @@
+version: 2
+
+models:
+  - name: int_sessions_attributed
+    description: >
+      One row per session, enriched with purchase data. Joins stg_ga4_sessions
+      to stg_ga4_purchases on session_key. Sessions that did not result in a
+      purchase have null transaction_id and 0 revenue. All sessions are retained
+      using a left join to ensure non-converting sessions are not lost from
+      channel performance analysis.
+
+    columns:
+      - name: session_key
+        description: Primary key. Unique identifier for a session.
+        tests:
+          - not_null
+          - unique
+
+      - name: user_pseudo_id
+        description: Anonymous identifier for the user who initiated the session.
+        tests:
+          - not_null
+
+      - name: session_id
+        description: Numeric session identifier, unique for each user.
+        tests:
+          - not_null
+
+      - name: session_date
+        description: Date the session started.
+        tests:
+          - not_null
+
+      - name: session_start_timestamp
+        description: Exact timestamp of the first event in the session.
+        tests:
+          - not_null
+
+      - name: session_end_timestamp
+        description: Exact timestamp of the last event in the session.
+        tests:
+          - not_null
+
+      - name: session_number
+        description: Which session this is for the user. 1 means their first ever session.
+
+      - name: source
+        description: Traffic source that drove this session, e.g. google, facebook.
+        tests:
+          - not_null
+
+      - name: medium
+        description: Channel type that drove this session, e.g. cpc, organic, email.
+        tests:
+          - not_null
+
+      - name: campaign
+        description: Campaign name that drove this session if one was tagged.
+        tests:
+          - not_null
+
+      - name: did_convert
+        description: 1 if the session resulted in a purchase, 0 if not.
+        tests:
+          - not_null
+
+      - name: unique_event_count
+        description: Count of distinct event types occurring during the session.
+        tests:
+          - not_null
+
+      - name: purchase_count
+        description: >
+          Number of purchases completed in this session. 0 for sessions that
+          did not result in a purchase. A session can contain multiple purchases
+          so this count can exceed 1.
+        tests:
+          - not_null
+
+      - name: revenue
+        description: >
+          Total purchase revenue in USD across all purchases in this session.
+          0 for sessions that did not result in a purchase, replacing the null
+          that would otherwise come from the left join. Summed at session level
+          to handle cases where multiple purchases occurred in a single session.
+        tests:
+          - not_null
+
+  - name: int_funnel_events
+    description: >
+      One row per funnel event per session. Filtered from stg_ga4_events to
+      only include the six events that make up the purchase funnel: view_item,
+      add_to_cart, begin_checkout, add_shipping_info, add_payment_info, and
+      purchase. Each event is assigned a stage number and human readable stage
+      name for use in funnel analysis.
+
+    columns:
+      - name: session_key
+        description: Foreign key to int_sessions_attributed.
+        tests:
+          - not_null
+
+      - name: user_pseudo_id
+        description: Anonymous identifier for the user.
+        tests:
+          - not_null
+
+      - name: session_id
+        description: Numeric session identifier.
+        tests:
+          - not_null
+
+      - name: event_date
+        description: Date the funnel event occurred.
+        tests:
+          - not_null
+
+      - name: event_timestamp
+        description: Exact timestamp of the funnel event.
+        tests:
+          - not_null
+
+      - name: event_name
+        description: The raw GA4 event name.
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values:
+                - view_item
+                - add_to_cart
+                - begin_checkout
+                - add_shipping_info
+                - add_payment_info
+                - purchase
+
+      - name: funnel_stage
+        description: >
+          Numeric position of this event in the funnel. 1 = view_item,
+          2 = add_to_cart, 3 = begin_checkout, 4 = add_shipping_info,
+          5 = add_payment_info, 6 = purchase.
+        tests:
+          - not_null
+
+      - name: funnel_stage_name
+        description: Human readable label for the funnel stage, for use in reporting.
+        tests:
+          - not_null

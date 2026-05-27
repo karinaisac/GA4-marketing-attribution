@@ -22,12 +22,13 @@ into more meaningful tables.
 
 ---
 
-## Project Structure
+```
 models/
-├── staging/        # Clean and type raw source data. One model per source.
-├── intermediate/   # Join and reshape staging models.
-└── marts/          # Final models, ready for querying and/or use for dashboards.
+├── staging/        # Clean and type raw source data. One model per source entity.
+├── intermediate/   # Join and reshape staging models. Not intended for direct consumption.
+└── marts/          # Final analytical models. Intended for BI tools and stakeholders.
 tests/              # Custom singular tests including reconciliations.
+```
 
 ### Staging
 - **`stg_ga4_events`** — one row per GA4 event. Extracts nested fields from

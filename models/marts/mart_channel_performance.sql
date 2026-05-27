@@ -26,7 +26,7 @@ aggregated as (
         -- derived metrics
         round(safe_divide(sum(did_convert), count(session_key)), 4) as conversion_rate,
         round(safe_divide(sum(revenue), count(session_key)), 2) as revenue_per_session,
-        round(safe_divide(sum(revenue), nullif(sum(did_convert), 0)), 2) as avg_order_value
+        round(safe_divide(sum(revenue), sum(did_convert)), 2) as avg_order_value
 
     from sessions
     group by session_date, source, medium, campaign

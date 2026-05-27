@@ -32,7 +32,7 @@ sessions as (
         -- total revenue for the session, null if no purchase occurred
         sum(revenue) as revenue,
 
-        -- count of distinct event types as a proxy for engagement
+        -- count of distinct event types as a proxy metric for engagement (higher count, more engagement)
         count(distinct event_name) as unique_event_count
 
     from events

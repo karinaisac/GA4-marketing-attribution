@@ -1,0 +1,158 @@
+version: 2
+
+models:
+  - name: mart_channel_performance
+    description: >
+      One row per day per channel combination (source, medium, campaign).
+      Aggregates session, conversion, and revenue metrics by channel and date.
+      Used to evaluate which marketing channels are driving the most valuable
+      traffic to the Google Merchandise Store.
+
+    columns:
+      - name: session_date
+        description: Date the sessions occurred.
+        tests:
+          - not_null
+
+      - name: source
+        description: Where the user came from, e.g. google, facebook.
+        tests:
+          - not_null
+
+      - name: medium
+        description: Channel type, e.g. cpc, organic, email.
+        tests:
+          - not_null
+
+      - name: campaign
+        description: Campaign name if one was tagged on the traffic source.
+        tests:
+          - not_null
+
+      - name: sessions
+        description: Total number of sessions driven by this channel on this date.
+        tests:
+          - not_null
+
+      - name: new_user_sessions
+        description: >
+          Number of sessions where the user was visiting the site for the
+          first time. Identified by session_number = 1.
+        tests:
+          - not_null
+
+      - name: conversions
+        description: Number of sessions that resulted in at least one purchase.
+        tests:
+          - not_null
+
+      - name: total_purchases
+        description: >
+          Total number of purchases across all sessions for this channel and
+          date. Can exceed conversions if a single session contained multiple
+          purchases.
+        tests:
+          - not_null
+
+      - name: total_revenue
+        description: Total purchase revenue in USD for this channel and date.
+        tests:
+          - not_null
+
+      - name: conversion_rate
+        description: >
+          Proportion of sessions that resulted in a purchase. Calculated as
+          conversions divided by sessions. Rounded to 4 decimal places.
+
+      - name: revenue_per_session
+        description: >
+          Average revenue generated per session. Calculated as total revenue
+          divided by total sessions. Rounded to 2 decimal places.
+
+      - name: avg_order_value
+        description: >
+          Average revenue per converting session. Calculated as total revenue
+          divided by number of conversions. Null for channels with zero
+          conversions. Rounded to 2 decimal places.
+
+  - name: mart_funnel
+    description: >
+      One row per day per funnel stage. Shows how many sessions reached each
+      stage of the purchase funnel on each date, along with the conversion
+      rate from the previous stage. Used to identify where users are dropping
+      off in the purchase journey.
+
+    columns:
+      - name: event_date
+        description: Date the funnel events occurred.
+        tests:
+          - not_null
+
+      - name: funnel_stage
+        description: Numeric position in the funnel. 1 = view_item, 6 = purchase.
+        tests:
+          - not_null
+
+      - name: funnel_stage_name
+        description: Human readable label for the funnel stage.
+        tests:
+          - not_null
+
+      - name: sessions_reached
+        description: >
+          Number of distinct sessions that reached this funnel stage on this
+          date.
+        tests:
+          - not_null
+
+      - name: sessions_at_previous_stage
+        description: >
+          Number of distinct sessions that reached the previous funnel stage
+          on this date. Null for the first stage as there is no previous step.
+
+      - name: step_conversion_rate
+        description: >
+          Proportion of sessions from the previous stage that made it to this
+          stage. Null for the first stage. Rounded to 4 decimal places.
+
+  - name: mart_cohorts
+    description: >
+      One row per cohort month per months since acquisition. Groups users by
+      the month they first visited the site and tracks their session, revenue,
+      and conversion behaviour over time. Used to understand the long term
+      value of users acquired in different months.
+
+    columns:
+      - name: cohort_month
+        description: >
+          The month in which the users in this cohort first visited the site.
+          Truncated to the first day of the month.
+        tests:
+          - not_null
+
+      - name: months_since_acquisition
+        description: >
+          How many months after their acquisition month this row represents.
+          0 means the same month they were acquired, 1 means one month later,
+          and so on.
+        tests:
+          - not_null
+
+      - name: active_users
+        description: >
+          Number of distinct users from this cohort who had at least one
+          session in this month.
+        tests:
+          - not_null
+
+      - name: revenue
+        description: >
+          Total revenue generated by this cohort in this month.
+        tests:
+          - not_null
+
+      - name: conversions
+        description: >
+          Total number of converting sessions for this cohort in this month.
+        tests:
+          - not_null
